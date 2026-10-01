@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MR Photography | AR Wedding Experience</title>
+
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080808;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    #brand {
+      position: fixed;
+      z-index: 20;
+      top: 18px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      letter-spacing: 2px;
+      font-weight: 700;
+      color: #e5bd62;
+      text-shadow: 0 1px 8px #000;
+      pointer-events: none;
+    }
+    #start, #sound {
+      position: fixed;
+      z-index: 30;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 22px;
+      background: #c99b3b;
+      color: #111;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      box-shadow: 0 4px 18px #0008;
+    }
+    #start { top: 48%; }
+    #sound { bottom: max(24px, env(safe-area-inset-bottom)); display: none; }
+    #hint {
+      position: fixed;
+      z-index: 20;
+      bottom: 86px;
+      left: 8%;
+      width: 84%;
+      text-align: center;
+      color: #fff;
+      font-size: 14px;
+      text-shadow: 0 1px 6px #000;
+      pointer-events: none;
+    }
+    a-scene { width: 100vw; height: 100vh; }
+  </style>
+</head>
+
+<body>
+  <div id="brand">MR PHOTOGRAPHY</div>
+  <button id="start">START AR EXPERIENCE</button>
+  <div id="hint">Point your camera at the wedding photo</div>
+  <button id="sound">TURN SOUND ON</button>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiScanning: yes;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    embedded>
+
+    <a-assets>
+      <video
+        id="weddingVideo"
+        src="./wedding.mp4"
+        preload="auto"
+        loop
+        muted
+        playsinline
+        webkit-playsinline
+        crossorigin="anonymous">
+      </video>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="weddingTarget" mindar-image-target="targetIndex: 0">
+      <a-video
+        src="#weddingVideo"
+        position="0 0 0.05"
+        width="0.9"
+        height="0.506"
+        material="shader: flat; transparent: false">
+      </a-video>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const scene = document.querySelector("a-scene");
+    const video = document.querySelector("#weddingVideo");
+    const target = document.querySelector("#weddingTarget");
+    const startButton = document.querySelector("#start");
+    const soundButton = document.querySelector("#sound");
+    const hint = document.querySelector("#hint");
+
+    startButton.addEventListener("click", async () => {
+      try {
+        // Unlock video playback on mobile browsers while keeping it muted.
+        video.muted = true;
+        await video.play();
+        video.pause();
+        video.currentTime = 0;
+
+        await scene.systems["mindar-image-system"].start();
+
+        startButton.style.display = "none";
+        soundButton.style.display = "block";
+        hint.textContent = "Keep the wedding photo inside the camera view";
+      } catch (error) {
+        console.error(error);
+        alert("Could not start AR. Please allow camera access and open this page using HTTPS.");
+      }
+    });
+
+    target.addEventListener("targetFound", () => {
+      hint.textContent = "MR Photography – Wedding memory found!";
+      video.currentTime = 0;
+      video.play().catch(error => console.error("Video playback:", error));
+    });
+
+    target.addEventListener("targetLost", () => {
+      video.pause();
+      hint.textContent = "Point your camera at the wedding photo";
+    });
+
+    soundButton.addEventListener("click", () => {
+      video.muted = !video.muted;
+      soundButton.textContent = video.muted ? "TURN SOUND ON" : "MUTE SOUND";
+      if (!video.paused) {
+        video.play().catch(error => console.error("Video playback:", error));
+      }
+    });
+  </script>
+</body>
+</html>
